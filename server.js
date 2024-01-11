@@ -4,10 +4,6 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const randomColor = require('randomcolor');
 const jwt = require('jsonwebtoken');
-const multer = require('multer');
-const storage = multer.memoryStorage();
-const path = require('path');
-const fs = require('fs');
 const firebase = require("firebase-admin");
 
 const secretKey = process.env.secret_key || "DonaldMxolisiRSA04?????";
