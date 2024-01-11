@@ -16,7 +16,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const firebaseServiceAccount = require("./peermine-843bb-firebase-adminsdk-8h40m-c6c9b9ec99.json");
+const firebaseServiceAccount = require("./firebase.json");
 
 firebase.initializeApp({
   credential: firebase.credential.cert(firebaseServiceAccount),
