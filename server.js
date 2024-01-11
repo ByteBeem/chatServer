@@ -30,6 +30,33 @@ const io = new Server(server, {
 });
 
 
+const corsOptionsServer = {
+  origin: ['https://peermine.vercel.app', 'https://peermine.vercel.app', 'https://peermine.vercel.app'],
+  credentials: true,
+  exposedHeaders: ['Content-Length', 'X-Content-Type-Options', 'X-Frame-Options'],
+};
+
+app.use(cors(corsOptionsServer));
+
+app.use((req, res, next) => {
+  const allowedOrigins = ['https://peermine.vercel.app', 'https://peermine.vercel.app', 'https://www.shopient.co.za', 'https://peermine.vercel.app'];
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+
+  res.header('Access-Control-Allow-Credentials', true);
+
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+    res.header('Access-Control-Allow-Headers', 'Access-Control-Allow-Origin', 'Content-Type, Authorization');
+    return res.status(200).json({});
+  }
+
+  next();
+});
+
 const userColors = {};
 
 app.post('/userChat', async (req, res) => {
