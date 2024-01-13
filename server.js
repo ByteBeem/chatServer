@@ -4,13 +4,14 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const randomColor = require('randomcolor');
 const jwt = require('jsonwebtoken');
-const firebase = require("firebase-admin");
+const firebase = require('firebase-admin');
 
-const secretKey = process.env.secret_key || "DonaldMxolisiRSA04?????";
+const secretKey = process.env.secret_key || 'DonaldMxolisiRSA04?????';
 
 const app = express();
+
 const corsOptionsServer = {
-  origin: ['https://peermine.vercel.app', 'https://peermine.vercel.app', 'https://peermine.vercel.app'],
+  origin: ['https://peermine.vercel.app', 'https://www.shopient.co.za'],
   credentials: true,
   exposedHeaders: ['Content-Length', 'X-Content-Type-Options', 'X-Frame-Options'],
 };
@@ -18,7 +19,7 @@ const corsOptionsServer = {
 app.use(cors(corsOptionsServer));
 
 app.use((req, res, next) => {
-  const allowedOrigins = ['https://peermine.vercel.app', 'https://peermine.vercel.app', 'https://www.shopient.co.za', 'https://peermine.vercel.app'];
+  const allowedOrigins = ['https://peermine.vercel.app', 'https://www.shopient.co.za'];
   const origin = req.headers.origin;
 
   if (allowedOrigins.includes(origin)) {
@@ -29,19 +30,20 @@ app.use((req, res, next) => {
 
   if (req.method === 'OPTIONS') {
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
-    res.header('Access-Control-Allow-Headers', 'Access-Control-Allow-Origin', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     return res.status(200).json({});
   }
 
   next();
 });
+
 app.use(express.json());
 
-const firebaseServiceAccount = require("./firebase.json");
+const firebaseServiceAccount = require('./firebase.json');
 
 firebase.initializeApp({
   credential: firebase.credential.cert(firebaseServiceAccount),
-  databaseURL: "https://peermine-843bb-default-rtdb.firebaseio.com",
+  databaseURL: 'https://peermine-843bb-default-rtdb.firebaseio.com',
 });
 
 const db = firebase.database();
@@ -54,14 +56,10 @@ const io = new Server(server, {
   },
 });
 
-
-
-
 const userColors = {};
 
 app.post('/userChat', async (req, res) => {
   const { token } = req.body;
-  console.log("token", token);
 
   if (!token) {
     return res.status(400).json({ error: 'Token is required' });
@@ -69,43 +67,25 @@ app.post('/userChat', async (req, res) => {
 
   try {
     const decodedToken = jwt.verify(token, secretKey);
-
     const userId = decodedToken.cell;
 
     const snapshot = await db.ref('users').orderByChild('cell').equalTo(decodedToken.cell).once('value');
     const user = snapshot.val();
 
-   
-
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    const { name, surname, cell, password, balance } = user[Object.keys(user)[0]];
 
+    const userColor = randomColor();
+    userColors[userId] = userColor;
 
-    if (user) {
-    const Username = user[Object.keys(user)[0]].name;
-    const Usersurname = user[Object.keys(user)[0]].surname;
-    const Usercell = user[Object.keys(user)[0]].cell;
-    const Userpassword = user[Object.keys(user)[0]].password;
-    const Userbalance = user[Object.keys(user)[0]].balance;
-      
+    const messageSnapshot = await db.ref('messages').once('value');
+    const messages = messageSnapshot.val() || {};
+    const messageRows = Object.values(messages);
 
-      // Generate a random color for the user
-      const userColor = randomColor();
-      userColors[userId] = userColor;
-
-      // Fetch all messages from the database
-      const messageSnapshot = await db.ref('messages').once('value');
-      const messages = messageSnapshot.val() || {};
-
-      const messageRows = Object.values(messages);
-
-      // Send the user their name, color, and all messages
-      res.json({ name: Username, color: userColor, messages: messageRows });
-    } else {
-      res.status(404).json({ error: 'User not found' });
-    }
+    res.json({ name, color: userColor, messages: messageRows });
   } catch (error) {
     console.error('Error fetching user name:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -121,34 +101,29 @@ io.on('connection', (socket) => {
     const decodedToken = jwt.verify(userToken, secretKey);
     const userId = decodedToken.cell;
 
-    // Generate a random color for the user
     const userColor = randomColor();
     userColors[userId] = userColor;
 
-    // Send the user their color
     socket.emit('user-color', { color: userColor });
 
     socket.on('user-message', async (data) => {
       const { type, message } = data;
-      const text = message.text;
-      const username = message.name;
+      const { text, name } = message;
 
-      console.log(`User message from ${username}: ${text}`);
+      console.log(`User message from ${name}: ${text}`);
 
       try {
-        // Insert the message into Firebase Realtime Database
         await db.ref('messages').push({
-          username: username,
-          text: text,
+          username: name,
+          text,
           color: userColor,
         });
       } catch (error) {
         console.error('Error saving message to database:', error);
       }
 
-      // Broadcast the message to all connected users
       io.emit('chat-message', {
-        username: username,
+        username: name,
         text,
         color: userColor,
       });
@@ -156,7 +131,6 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
       console.log(`User disconnected: ${socket.id}`);
-      // Remove the user's color when they disconnect
       delete userColors[userId];
     });
   } catch (error) {
@@ -165,7 +139,6 @@ io.on('connection', (socket) => {
   }
 });
 
-    server.listen(3000, () => {
+server.listen(3000, () => {
   console.log('Server listening on port 3000');
 });
-
