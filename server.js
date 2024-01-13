@@ -9,27 +9,6 @@ const firebase = require("firebase-admin");
 const secretKey = process.env.secret_key || "DonaldMxolisiRSA04?????";
 
 const app = express();
-app.use(cors());
-app.use(express.json());
-
-const firebaseServiceAccount = require("./firebase.json");
-
-firebase.initializeApp({
-  credential: firebase.credential.cert(firebaseServiceAccount),
-  databaseURL: "https://peermine-843bb-default-rtdb.firebaseio.com",
-});
-
-const db = firebase.database();
-
-const server = http.createServer(app);
-
-const io = new Server(server, {
-  cors: {
-    origin: '*',
-  },
-});
-
-
 const corsOptionsServer = {
   origin: ['https://peermine.vercel.app', 'https://peermine.vercel.app', 'https://peermine.vercel.app'],
   credentials: true,
@@ -56,6 +35,27 @@ app.use((req, res, next) => {
 
   next();
 });
+app.use(express.json());
+
+const firebaseServiceAccount = require("./firebase.json");
+
+firebase.initializeApp({
+  credential: firebase.credential.cert(firebaseServiceAccount),
+  databaseURL: "https://peermine-843bb-default-rtdb.firebaseio.com",
+});
+
+const db = firebase.database();
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+  },
+});
+
+
+
 
 const userColors = {};
 
