@@ -19,7 +19,7 @@ const firebaseServiceAccount = require('./firebase.json');
 
 firebase.initializeApp({
   credential: firebase.credential.cert(firebaseServiceAccount),
-  databaseURL: 'https://peermine-843bb-default-rtdb.firebaseio.com',
+  databaseURL: "https://jobs4life-d6926-default-rtdb.asia-southeast1.firebasedatabase.app",
 });
 
 const db = firebase.database();
