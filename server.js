@@ -42,9 +42,9 @@ io.on('connection', (socket) => {
     try {
       await db.ref('messages').push({
         senderId: socket.id,
-        senderName: 'Anonymous',
-        recipientId,
-        text,
+        
+        userId:recipientId,
+        message:text,
       });
     } catch (error) {
       console.error('Error saving message to database:', error);
