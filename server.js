@@ -44,6 +44,7 @@ io.on('connection', (socket) => {
         senderId: senderId,
         reciever : recipientId,
         message:text,
+        createdAt: new Date(),
       });
     } catch (error) {
       console.error('Error saving message to database:', error);
