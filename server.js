@@ -36,7 +36,7 @@ const userSockets = {};
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
 
-  socket.on('sendMessage', async ({ text, recipientId , senderId}) => {
+  socket.on('sendMessage', async ({ text, recipientId , senderId , createdAt}) => {
     console.log(`User ${socket.id} sent a message to ${recipientId}: ${text}`);
 
     try {
@@ -44,7 +44,7 @@ io.on('connection', (socket) => {
         senderId: senderId,
         reciever : recipientId,
         message:text,
-        createdAt: new Date(),
+        createdAt: createdAt,
       });
     } catch (error) {
       console.error('Error saving message to database:', error);
