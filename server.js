@@ -36,14 +36,13 @@ const userSockets = {};
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
 
-  socket.on('sendMessage', async ({ text, recipientId }) => {
+  socket.on('sendMessage', async ({ text, recipientId , senderId}) => {
     console.log(`User ${socket.id} sent a message to ${recipientId}: ${text}`);
 
     try {
       await db.ref('messages').push({
-        senderId: socket.id,
-        
-        userId:recipientId,
+        senderId: senderId,
+        reciever : recipientId,
         message:text,
       });
     } catch (error) {
