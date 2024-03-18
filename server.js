@@ -32,18 +32,26 @@ const io = new Server(server, {
 });
 
 const userSockets = {};
+const offlineMessages = {};
 
 io.on('connection', (socket) => {
-  console.log(`User connected: ${socket.id}`);
+  const userId = socket.handshake.query.userId;
+    
+  console.log('New connection with userId:', userId);
 
-  socket.on('sendMessage', async ({ text, recipientId , senderId , createdAt}) => {
-    console.log(`User ${socket.id} sent a message to ${recipientId}: ${text}`);
+  // Store user's socket based on userId
+  if (userId) {
+    userSockets[userId] = socket;
+  }
+
+  socket.on('sendMessage', async ({ text, recipientId, senderId, createdAt }) => {
+    console.log(`User ${userId} sent a message to ${recipientId}: ${text}`);
 
     try {
       await db.ref('messages').push({
         senderId: senderId,
-        reciever : recipientId,
-        message:text,
+        reciever: recipientId,
+        message: text,
         createdAt: createdAt,
       });
     } catch (error) {
@@ -53,21 +61,68 @@ io.on('connection', (socket) => {
     const recipientSocket = userSockets[recipientId];
     if (recipientSocket) {
       recipientSocket.emit('receiveMessage', {
-        senderId: socket.id,
-        senderName: 'Anonymous',
-        text,
+        senderId: senderId,
+        text: text,
       });
     } else {
       console.log(`Recipient ${recipientId} is not connected.`);
+      // Store message for offline user
+      if (!offlineMessages[recipientId]) {
+        offlineMessages[recipientId] = [];
+      }
+      offlineMessages[recipientId].push({ senderId, text, createdAt });
     }
   });
 
   socket.on('disconnect', () => {
-    console.log(`User disconnected: ${socket.id}`);
-    delete userSockets[socket.id];
+    console.log(`User disconnected: ${userId}`);
+    // Remove socket entry for the disconnected user
+    delete userSockets[userId];
   });
 
-  userSockets[socket.id] = socket;
+  // When user comes back online, check for stored messages and send them
+  socket.on('checkOfflineMessages', () => {
+    const offlineMsgs = offlineMessages[userId];
+    if (offlineMsgs && offlineMsgs.length > 0) {
+      offlineMsgs.forEach(({ senderId, text, createdAt }) => {
+        socket.emit('receiveMessage', {
+          senderId,
+          text,
+          createdAt
+        });
+      });
+      delete offlineMessages[userId];
+    }
+  });
+});
+
+// Handle reconnection attempts
+io.on('connection', (socket) => {
+  const userId = socket.handshake.query.userId;
+
+  // If the user has a userId, store the socket again
+  if (userId) {
+    userSockets[userId] = socket;
+
+    // If the user has offline messages, emit them to the client
+    const offlineMsgs = offlineMessages[userId];
+    if (offlineMsgs && offlineMsgs.length > 0) {
+      offlineMsgs.forEach(({ senderId, text, createdAt }) => {
+        socket.emit('receiveMessage', {
+          senderId,
+          text,
+          createdAt
+        });
+      });
+      delete offlineMessages[userId];
+    }
+  }
+
+  // Handle disconnection and remove the socket from userSockets
+  socket.on('disconnect', () => {
+    console.log(`User disconnected: ${userId}`);
+    delete userSockets[userId];
+  });
 });
 
 const PORT = process.env.PORT || 3000;
