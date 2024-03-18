@@ -42,6 +42,20 @@ io.on('connection', (socket) => {
   // Store user's socket based on userId
   if (userId) {
     userSockets[userId] = socket;
+    
+    // If the user has offline messages, emit them to the client
+    const offlineMsgs = offlineMessages[userId];
+    if (offlineMsgs && offlineMsgs.length > 0) {
+      console.log(`Offline messages for user ${userId}:`, offlineMsgs); // Log offline messages
+      offlineMsgs.forEach(({ senderId, text, createdAt }) => {
+        socket.emit('receiveMessage', {
+          senderId,
+          text,
+          createdAt
+        });
+      });
+      delete offlineMessages[userId]; // Remove offline messages after sending
+    }
   }
 
   socket.on('sendMessage', async ({ text, recipientId, senderId, createdAt }) => {
@@ -74,16 +88,11 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('disconnect', () => {
-    console.log(`User disconnected: ${userId}`);
-    // Remove socket entry for the disconnected user
-    delete userSockets[userId];
-  });
-
   // When user comes back online, check for stored messages and send them
   socket.on('checkOfflineMessages', () => {
     const offlineMsgs = offlineMessages[userId];
     if (offlineMsgs && offlineMsgs.length > 0) {
+      console.log(`Offline messages for user ${userId}:`, offlineMsgs); // Log offline messages
       offlineMsgs.forEach(({ senderId, text, createdAt }) => {
         socket.emit('receiveMessage', {
           senderId,
@@ -94,29 +103,6 @@ io.on('connection', (socket) => {
       delete offlineMessages[userId];
     }
   });
-});
-
-// Handle reconnection attempts
-io.on('connection', (socket) => {
-  const userId = socket.handshake.query.userId;
-
-  // If the user has a userId, store the socket again
-  if (userId) {
-    userSockets[userId] = socket;
-
-    // If the user has offline messages, emit them to the client
-    const offlineMsgs = offlineMessages[userId];
-    if (offlineMsgs && offlineMsgs.length > 0) {
-      offlineMsgs.forEach(({ senderId, text, createdAt }) => {
-        socket.emit('receiveMessage', {
-          senderId,
-          text,
-          createdAt
-        });
-      });
-      delete offlineMessages[userId];
-    }
-  }
 
   // Handle disconnection and remove the socket from userSockets
   socket.on('disconnect', () => {
