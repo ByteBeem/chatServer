@@ -55,7 +55,7 @@ io.on('connection', (socket) => {
           createdAt
         });
       });
-      delete offlineMessages[userId]; // Remove offline messages after sending
+      delete offlineMessages[userId]; 
     }
   }
 
@@ -93,6 +93,22 @@ io.on('connection', (socket) => {
       offlineMessages[recipientId].push({ senderId, text, createdAt });
     }
   });
+
+  
+
+socket.on('getOfflineMessageDetails', () => {
+  const offlineMsgs = offlineMessages[userId];
+  if (offlineMsgs && offlineMsgs.length > 0) {
+    const offlineMsgCount = offlineMsgs.length;
+    const senderIds = offlineMsgs.map(msg => msg.senderId);
+    socket.emit('offlineMessageDetails', { count: offlineMsgCount, senderIds });
+  } else {
+   
+    socket.emit('offlineMessageDetails', { count: 0, senderIds: [] });
+  }
+});
+
+
 
   // When user comes back online, check for stored messages and send them
   socket.on('checkOfflineMessages', () => {
