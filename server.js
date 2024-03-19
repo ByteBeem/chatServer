@@ -36,7 +36,8 @@ const offlineMessages = {};
 
 io.on('connection', (socket) => {
   const userId = socket.handshake.query.userId;
-    
+  
+  // Log new connections
   console.log('New connection with userId:', userId);
 
   // Store user's socket based on userId
@@ -58,13 +59,17 @@ io.on('connection', (socket) => {
     }
   }
 
+  // Handle sending messages
   socket.on('sendMessage', async ({ text, recipientId, senderId, createdAt }) => {
     console.log(`User ${userId} sent a message to ${recipientId}: ${text}`);
 
+    // Generate chatId from senderId and recipientId
+    const chatId = [senderId, recipientId].sort().join('_'); 
     try {
-      await db.ref('messages').push({
+      // Push message to the appropriate chatId node
+      await db.ref(`messages/${chatId}`).push({
         senderId: senderId,
-        reciever: recipientId,
+        recipientId: recipientId,
         message: text,
         createdAt: createdAt,
       });
@@ -72,6 +77,7 @@ io.on('connection', (socket) => {
       console.error('Error saving message to database:', error);
     }
 
+    // Emit message to recipient if online, otherwise store it as offline message
     const recipientSocket = userSockets[recipientId];
     if (recipientSocket) {
       recipientSocket.emit('receiveMessage', {
