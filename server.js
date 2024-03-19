@@ -98,6 +98,8 @@ io.on('connection', (socket) => {
 
 socket.on('getOfflineMessageDetails', () => {
   const offlineMsgs = offlineMessages[userId];
+  console.log('offlineMsgs',offlineMsgs);
+  console.log('userId',userId);
   if (offlineMsgs && offlineMsgs.length > 0) {
     const offlineMsgCount = offlineMsgs.length;
     const senderIds = offlineMsgs.map(msg => msg.senderId);
