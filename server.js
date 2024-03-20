@@ -120,7 +120,7 @@ io.on('connection', (socket) => {
             const senderIds = offlineMsgs.map(msg => msg.senderId);
             socket.emit('offlineMessageDetails', { count: offlineMsgs.length, senderIds });
         }
-        delete offlineMessages[userId]; 
+       
     });
 
     socket.on('disconnect', () => {
