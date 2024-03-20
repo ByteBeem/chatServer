@@ -125,8 +125,9 @@ io.on('connection', (socket) => {
     // Handle 'getOfflineMessageDetails' event
     socket.on('getOfflineMessageDetails', () => {
       console.log("Yes i am here");
-      console.log(`Offline messages for user ${userId}:`, offlineMsgs); 
+     
         const offlineMsgs = offlineMessages[userId];
+       console.log(`Offline messages for user ${userId}:`, offlineMsgs); 
         if (offlineMsgs && offlineMsgs.length > 0) {
             console.log(`Offline messages for user ${userId}:`, offlineMsgs); 
             socket.emit('offlineMessageDetails', { count: offlineMsgs.length, senderIds: offlineMsgs.map(msg => msg.senderId) });
