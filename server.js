@@ -81,35 +81,36 @@ io.on('connection', (socket) => {
         }
     }
 
-    socket.on('sendMessage', async ({ text, recipientId, senderId, createdAt }) => {
-        console.log(`User ${userId} sent a message to ${recipientId}: ${text}`);
+  socket.on('sendMessage', async ({ text, recipientId, senderId, createdAt }) => {
+    console.log(`User ${userId} sent a message to ${recipientId}: ${text}`);
 
-        const chatId = [senderId, recipientId].sort().join('_'); 
-        try {
-            await db.ref(`messages/${chatId}`).push({
-                senderId: senderId,
-                recipientId: recipientId,
-                message: text,
-                createdAt: createdAt,
-            });
-        } catch (error) {
-            console.error('Error saving message to database:', error);
-        }
+    const chatId = [senderId, recipientId].sort().join('_'); 
+    try {
+        await db.ref(`messages/${chatId}`).push({
+            senderId: senderId,
+            recipientId: recipientId,
+            message: text,
+            createdAt: createdAt,
+        });
+    } catch (error) {
+        console.error('Error saving message to database:', error);
+    }
 
-        const recipientSocket = userSockets[recipientId];
-        if (recipientSocket) {
-            recipientSocket.emit('receiveMessage', {
-                senderId: senderId,
-                text: text,
-            });
-        } else {
-            console.log(`Recipient ${recipientId} is not connected.`);
-            if (!offlineMessages[recipientId]) {
-                offlineMessages[recipientId] = [];
-            }
-            offlineMessages[recipientId].push({ senderId, text, createdAt });
+    const recipientSocket = userSockets[recipientId];
+    if (recipientSocket && recipientSocket.connected) { // Check if recipientSocket is valid and connected
+        recipientSocket.emit('receiveMessage', {
+            senderId: senderId,
+            text: text,
+        });
+    } else {
+        console.log(`Recipient ${recipientId} is not connected.`);
+        if (!offlineMessages[recipientId]) {
+            offlineMessages[recipientId] = [];
         }
-    });
+        offlineMessages[recipientId].push({ senderId, text, createdAt });
+    }
+});
+
 
     socket.on('getOfflineMessageDetails', () => {
         const offlineMsgs = offlineMessages[userId];
