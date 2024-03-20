@@ -118,7 +118,7 @@ io.on('connection', (socket) => {
       console.log('offline details',offlineMsgs);
         if (offlineMsgs && offlineMsgs.length > 0) {
             const senderIds = offlineMsgs.map(msg => msg.senderId);
-            socket.emit('offlineMessageDetails', { count: offlineMsgs.length, senderIds });
+            socket.emit('offlineMessageDetails', { count: offlineMsgs.length || 0, senderIds });
         }
        
     });
