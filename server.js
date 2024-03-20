@@ -77,7 +77,7 @@ io.on('connection', (socket) => {
                     createdAt
                 });
             });
-            delete offlineMessages[userId]; 
+          
         }
     }
 
@@ -113,11 +113,14 @@ io.on('connection', (socket) => {
 
 
     socket.on('getOfflineMessageDetails', () => {
+      console.log("getOfflineMessageDetails trickered");
         const offlineMsgs = offlineMessages[userId];
+      console.log('offline details',offlineMsgs);
         if (offlineMsgs && offlineMsgs.length > 0) {
             const senderIds = offlineMsgs.map(msg => msg.senderId);
             socket.emit('offlineMessageDetails', { count: offlineMsgs.length, senderIds });
         }
+        delete offlineMessages[userId]; 
     });
 
     socket.on('disconnect', () => {
