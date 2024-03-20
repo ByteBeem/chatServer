@@ -46,6 +46,14 @@ const updateUserStatus = (userId, online) => {
     }
 };
 
+const emitOfflineMessageDetails = (socket, userId) => {
+    const offlineMsgs = offlineMessages[userId];
+    if (offlineMsgs && offlineMsgs.length > 0) {
+        const senderIds = offlineMsgs.map(msg => msg.senderId);
+        socket.emit('offlineMessageDetails', { count: offlineMsgs.length || 0, senderIds });
+    }
+};
+
 const updateOfflineUsersLastSeen = () => {
     const currentTime = new Date();
     for (const [userId, userData] of Object.entries(userSockets)) {
@@ -81,6 +89,10 @@ io.on('connection', (socket) => {
         }
     }
 
+  const offlineMessageInterval = setInterval(() => {
+        emitOfflineMessageDetails(socket, userId);
+    }, 1000);
+
   socket.on('sendMessage', async ({ text, recipientId, senderId, createdAt }) => {
     console.log(`User ${userId} sent a message to ${recipientId}: ${text}`);
 
@@ -112,20 +124,15 @@ io.on('connection', (socket) => {
 });
 
 
-    socket.on('getOfflineMessageDetails', () => {
-      console.log("getOfflineMessageDetails trickered");
-        const offlineMsgs = offlineMessages[userId];
-      console.log('offline details',offlineMsgs);
-        if (offlineMsgs && offlineMsgs.length > 0) {
-            const senderIds = offlineMsgs.map(msg => msg.senderId);
-            socket.emit('offlineMessageDetails', { count: offlineMsgs.length || 0, senderIds });
-        }
-       
+   socket.on('getOfflineMessageDetails', () => {
+        console.log("getOfflineMessageDetails triggered");
+        emitOfflineMessageDetails(socket, userId);
     });
 
     socket.on('disconnect', () => {
         console.log(`User disconnected: ${userId}`);
         updateUserStatus(userId, false);
+      clearInterval(offlineMessageInterval);
     });
 });
 
