@@ -34,106 +34,100 @@ const io = new Server(server, {
 const userSockets = {};
 const offlineMessages = {};
 
-io.on('connection', (socket) => {
-  const userId = socket.handshake.query.userId;
-  
-  // Log new connections
-  console.log('New connection with userId:', userId);
-
-  // Store user's socket based on userId
-  if (userId) {
-    userSockets[userId] = socket;
-    
-    // If the user has offline messages, emit them to the client
-    const offlineMsgs = offlineMessages[userId];
-    if (offlineMsgs && offlineMsgs.length > 0) {
-      console.log(`Offline messages for user ${userId}:`, offlineMsgs); // Log offline messages
-      offlineMsgs.forEach(({ senderId, text, createdAt }) => {
-        socket.emit('receiveMessage', {
-          senderId,
-          text,
-          createdAt
-        });
-      });
-      delete offlineMessages[userId]; 
-    }
-  }
-
-  // Handle sending messages
-  socket.on('sendMessage', async ({ text, recipientId, senderId, createdAt }) => {
-    console.log(`User ${userId} sent a message to ${recipientId}: ${text}`);
-
-    // Generate chatId from senderId and recipientId
-    const chatId = [senderId, recipientId].sort().join('_'); 
-    try {
-      // Push message to the appropriate chatId node
-      await db.ref(`messages/${chatId}`).push({
-        senderId: senderId,
-        recipientId: recipientId,
-        message: text,
-        createdAt: createdAt,
-      });
-    } catch (error) {
-      console.error('Error saving message to database:', error);
-    }
-
-    // Emit message to recipient if online, otherwise store it as offline message
-    const recipientSocket = userSockets[recipientId];
-    if (recipientSocket) {
-      recipientSocket.emit('receiveMessage', {
-        senderId: senderId,
-        text: text,
-      });
+// Function to update user's online status and last seen time
+const updateUserStatus = (userId, online) => {
+    if (online) {
+        userSockets[userId] = { online: true, lastSeen: new Date() };
     } else {
-      console.log(`Recipient ${recipientId} is not connected.`);
-      // Store message for offline user
-      if (!offlineMessages[recipientId]) {
-        offlineMessages[recipientId] = [];
-      }
-      offlineMessages[recipientId].push({ senderId, text, createdAt });
+        const userData = userSockets[userId];
+        if (userData) {
+            userData.online = false;
+            userSockets[userId] = userData;
+        }
     }
-  });
+};
 
+// Function to periodically update last seen time for offline users
+const updateOfflineUsersLastSeen = () => {
+    const currentTime = new Date();
+    for (const [userId, userData] of Object.entries(userSockets)) {
+        if (!userData.online) {
+            const lastSeenTime = userData.lastSeen;
+            const offlineDurationInSeconds = Math.floor((currentTime - lastSeenTime) / 1000);
+            console.log(`User ${userId} was last seen ${offlineDurationInSeconds} seconds ago`);
+        }
+    }
+};
+
+io.on('connection', (socket) => {
+    const userId = socket.handshake.query.userId;
   
+    // Log new connections
+    console.log('New connection with userId:', userId);
 
-socket.on('getOfflineMessageDetails', () => {
-  const offlineMsgs = offlineMessages[userId];
-  console.log('offlineMsgs',offlineMsgs);
-  console.log('userId',userId);
-  if (offlineMsgs && offlineMsgs.length > 0) {
-    const offlineMsgCount = offlineMsgs.length;
-    const senderIds = offlineMsgs.map(msg => msg.senderId);
-    socket.emit('offlineMessageDetails', { count: offlineMsgCount, senderIds });
-  } else {
-   
-    socket.emit('offlineMessageDetails', { count: 0, senderIds: [] });
-  }
-});
-
-
-
-  // When user comes back online, check for stored messages and send them
-  socket.on('checkOfflineMessages', () => {
-    const offlineMsgs = offlineMessages[userId];
-    if (offlineMsgs && offlineMsgs.length > 0) {
-      console.log(`Offline messages for user ${userId}:`, offlineMsgs); // Log offline messages
-      offlineMsgs.forEach(({ senderId, text, createdAt }) => {
-        socket.emit('receiveMessage', {
-          senderId,
-          text,
-          createdAt
-        });
-      });
-      delete offlineMessages[userId];
+    // Store user's socket based on userId
+    if (userId) {
+        updateUserStatus(userId, true);
+    
+        // If the user has offline messages, emit them to the client
+        const offlineMsgs = offlineMessages[userId];
+        if (offlineMsgs && offlineMsgs.length > 0) {
+            console.log(`Offline messages for user ${userId}:`, offlineMsgs); // Log offline messages
+            offlineMsgs.forEach(({ senderId, text, createdAt }) => {
+                socket.emit('receiveMessage', {
+                    senderId,
+                    text,
+                    createdAt
+                });
+            });
+            delete offlineMessages[userId]; 
+        }
     }
-  });
 
-  // Handle disconnection and remove the socket from userSockets
-  socket.on('disconnect', () => {
-    console.log(`User disconnected: ${userId}`);
-    delete userSockets[userId];
-  });
+    // Handle sending messages
+    socket.on('sendMessage', async ({ text, recipientId, senderId, createdAt }) => {
+        console.log(`User ${userId} sent a message to ${recipientId}: ${text}`);
+
+        // Generate chatId from senderId and recipientId
+        const chatId = [senderId, recipientId].sort().join('_'); 
+        try {
+            // Push message to the appropriate chatId node
+            await db.ref(`messages/${chatId}`).push({
+                senderId: senderId,
+                recipientId: recipientId,
+                message: text,
+                createdAt: createdAt,
+            });
+        } catch (error) {
+            console.error('Error saving message to database:', error);
+        }
+
+        // Emit message to recipient if online, otherwise store it as offline message
+        const recipientSocket = userSockets[recipientId];
+        if (recipientSocket) {
+            recipientSocket.emit('receiveMessage', {
+                senderId: senderId,
+                text: text,
+            });
+        } else {
+            console.log(`Recipient ${recipientId} is not connected.`);
+            // Store message for offline user
+            if (!offlineMessages[recipientId]) {
+                offlineMessages[recipientId] = [];
+            }
+            offlineMessages[recipientId].push({ senderId, text, createdAt });
+        }
+    });
+
+    // Handle disconnection and remove the socket from userSockets
+    socket.on('disconnect', () => {
+        console.log(`User disconnected: ${userId}`);
+        updateUserStatus(userId, false);
+    });
 });
+
+// Periodically update last seen time for offline users
+setInterval(updateOfflineUsersLastSeen, 60000); // Update every 1 minute (adjust as needed)
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
