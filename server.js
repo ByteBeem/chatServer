@@ -127,7 +127,15 @@ io.on('connection', (socket) => {
 });
 
 // Periodically update last seen time for offline users
-setInterval(updateOfflineUsersLastSeen, 60000); // Update every 1 minute (adjust as needed)
+setInterval(updateOfflineUsersLastSeen, 60000); 
+
+  socket.on('getOfflineMessageDetails', () => {
+        const offlineMsgs = offlineMessages[userId];
+        if (offlineMsgs && offlineMsgs.length > 0) {
+            console.log(`Offline messages for user ${userId}:`, offlineMsgs); 
+            socket.emit('offlineMessageDetails', { count: offlineMsgs.length, senderIds: offlineMsgs.map(msg => msg.senderId) });
+        }
+    });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
