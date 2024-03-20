@@ -69,6 +69,9 @@ io.on('connection', (socket) => {
     if (userId) {
         updateUserStatus(userId, true);
     
+        // Log when a user comes online
+        console.log(`User ${userId} is now online.`);
+
         // If the user has offline messages, emit them to the client
         const offlineMsgs = offlineMessages[userId];
         if (offlineMsgs && offlineMsgs.length > 0) {
@@ -119,6 +122,15 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Handle 'getOfflineMessageDetails' event
+    socket.on('getOfflineMessageDetails', () => {
+        const offlineMsgs = offlineMessages[userId];
+        if (offlineMsgs && offlineMsgs.length > 0) {
+            console.log(`Offline messages for user ${userId}:`, offlineMsgs); 
+            socket.emit('offlineMessageDetails', { count: offlineMsgs.length, senderIds: offlineMsgs.map(msg => msg.senderId) });
+        }
+    });
+
     // Handle disconnection and remove the socket from userSockets
     socket.on('disconnect', () => {
         console.log(`User disconnected: ${userId}`);
@@ -126,16 +138,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// Periodically update last seen time for offline users
-setInterval(updateOfflineUsersLastSeen, 60000); 
-
-  socket.on('getOfflineMessageDetails', () => {
-        const offlineMsgs = offlineMessages[userId];
-        if (offlineMsgs && offlineMsgs.length > 0) {
-            console.log(`Offline messages for user ${userId}:`, offlineMsgs); 
-            socket.emit('offlineMessageDetails', { count: offlineMsgs.length, senderIds: offlineMsgs.map(msg => msg.senderId) });
-        }
-    });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
